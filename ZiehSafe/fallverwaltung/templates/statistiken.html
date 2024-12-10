@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Statistiken</title>
+    <style>
+        body {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigationsleiste -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <button id="toggleSidebar" class="btn btn-secondary">Suche</button>
+            <h1>Statistiken</h1>
+            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+        </div>
+
+        <div class="alert alert-secondary" role="alert">
+            Diese Seite wird bald Informationen zu den Statistiken anzeigen.
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="{% url 'fall_uebersicht' %}" class="btn btn-secondary">Zurück zur Übersicht</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

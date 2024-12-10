@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZiehenSafe</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #ece9e6, #ffffff);
+        }
+        .container {
+            text-align: center;
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            width: 600px;
+        }
+        .container h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .container p {
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            color: #666;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+        }
+        .button {
+            flex: 1;
+            padding: 20px;
+            font-size: 1.2em;
+            text-decoration: none;
+            color: #ffffff;
+            background-color: #007bff;
+            border-radius: 15px;
+            transition: background-color 0.3s, transform 0.3s;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+        @media (max-width: 600px) {
+            .button-container {
+                flex-direction: column;
+            }
+            .button {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Willkommen</h1>
+        <p>Ziehenschule als SafePlace</p>
+        <div class="button-container">
+            <a href="/meldung/erstellen/" class="button">Fall melden</a>
+            <a href="/fallverwaltung/fall_uebersicht/" class="button">Verwaltung</a>
+        </div>
+    </div>
+</body>
+</html>

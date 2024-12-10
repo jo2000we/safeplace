@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Fall Übersicht</title>
+    <style>
+        body {
+            padding: 20px;
+        }
+        #seitenleiste {
+            display: none; /* Wird mit Klick auf den "Suche" Button ein- oder ausgeblendet */
+        }
+        .visible {
+            display: block !important; /* Sichtbarkeit erzwingen */
+        }
+        .fall-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+{% csrf_token %}
+
+<div class="container">
+    <!-- Top-Navigationsleiste -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+        <div class="container-fluid">
+            <!-- Button zum Ein- und Ausblenden der Seitenleiste -->
+            <button onclick="toggleSeitenleiste()" class="btn btn-outline-secondary">Suche</button>
+            <div class="ms-auto d-flex">
+                <a href="{% url 'abgeschlossene_faelle' %}" class="btn btn-secondary me-2">Abgeschlossene Fälle</a>
+                <a href="{% url 'statistiken' %}" class="btn btn-secondary me-2">Statistiken</a>
+                <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Seitenleiste -->
+    <div id="seitenleiste" class="card mb-4 p-3 visible">
+        <h5>Suche und Filter</h5>
+        <!-- Suchfeld -->
+        <div class="mb-3">
+            <input type="text" id="suchbegriff" class="form-control" placeholder="Kennung oder Beschreibung eingeben" oninput="updateFaelle()">
+        </div>
+
+        <div class="row">
+            <!-- Geschlecht filtern -->
+            <div class="col-md-3 mb-3">
+                <h6>Geschlecht filtern:</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="geschlecht" value="alle" id="geschlechtAlle" checked onchange="updateFaelle()">
+                    <label class="form-check-label" for="geschlechtAlle">Alle</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="geschlecht" value="M" id="geschlechtMaennlich" onchange="updateFaelle()">
+                    <label class="form-check-label" for="geschlechtMaennlich">Männlich</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="geschlecht" value="W" id="geschlechtWeiblich" onchange="updateFaelle()">
+                    <label class="form-check-label" for="geschlechtWeiblich">Weiblich</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="geschlecht" value="D" id="geschlechtDivers" onchange="updateFaelle()">
+                    <label class="form-check-label" for="geschlechtDivers">Divers</label>
+                </div>
+            </div>
+
+            <!-- Jahrgangsstufe filtern -->
+            <div class="col-md-3 mb-3">
+                <h6>Jahrgangsstufe filtern:</h6>
+                <input type="number" id="jahrgangsstufeFilter" class="form-control" placeholder="Jahrgangsstufe (5-13)" min="5" max="13" onchange="updateFaelle()">
+            </div>
+
+            <!-- Ort filtern -->
+            <div class="col-md-3 mb-3">
+                <h6>Ort filtern:</h6>
+                <select id="ortFilter" class="form-control" onchange="updateFaelle()">
+                    <option value="alle">Alle</option>
+                    <option value="Toilette">Toilette</option>
+                    <option value="Klassenraum">Klassenraum</option>
+                    <option value="Flur">Flur</option>
+                    <option value="Pausenhof">Pausenhof</option>
+                    <option value="Schulweg">Schulweg</option>
+                    <option value="Online">Online (WhatsApp, Instagram, Schul.Cloud...)</option>
+                    <option value="Woanders">Woanders</option>
+                </select>
+            </div>
+
+            <!-- Konfliktpartei filtern -->
+            <div class="col-md-3 mb-3">
+                <h6>Konfliktpartei filtern:</h6>
+                <select id="konfliktparteiFilter" class="form-control" onchange="updateFaelle()">
+                    <option value="alle">Alle</option>
+                    <option value="Schüler">Schüler (eine Person, Männlich)</option>
+                    <option value="Schülerin">Schülerin (eine Person, Weiblich)</option>
+                    <option value="Schüler*innen">Schüler*innen (Mehrzahl)</option>
+                    <option value="Lehrer">ein Lehrer (Männlich)</option>
+                    <option value="Lehrerin">eine Lehrerin (weiblich)</option>
+                    <option value="Lehrer*innen">Lehrer*innen (Mehrzahl)</option>
+                    <option value="Eltern">Eltern</option>
+                    <option value="Schulpersonal">Schulpersonal</option>
+                    <option value="Andere">Andere</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sortierungsoptionen -->
+    <div class="mb-4">
+        <h5>Sortieren nach:</h5>
+        <button class="btn btn-outline-primary me-2" onclick="setSortierung('vorfallsdatum', 'asc')">Vorfallsdatum Aufsteigend</button>
+        <button class="btn btn-outline-primary me-2" onclick="setSortierung('vorfallsdatum', 'desc')">Vorfallsdatum Absteigend</button>
+        <button class="btn btn-outline-primary me-2" onclick="setSortierung('erstellungsdatum', 'asc')">Erstellungsdatum Aufsteigend</button>
+        <button class="btn btn-outline-primary" onclick="setSortierung('erstellungsdatum', 'desc')">Erstellungsdatum Absteigend</button>
+    </div>
+
+    <!-- Übersicht der offenen Fälle -->
+    <h1 class="mb-4">Übersicht der Fälle</h1>
+    <div id="faelleListe">
+        {% for fall in faelle %}
+        <div class="fall-container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p data-kennung="{{ fall.kennung }}"><strong>Kennung:</strong> {{ fall.kennung }}</p>
+                    <p data-jahrgangsstufe="{{ fall.jahrgangsstufe }}"><strong>Jahrgangsstufe:</strong> {{ fall.jahrgangsstufe }}</p>
+                    <p data-geschlecht="{{ fall.geschlecht }}"><strong>Geschlecht:</strong> {{ fall.get_geschlecht_display }}</p>
+                    <p data-ort="{{ fall.ort }}"><strong>Ort:</strong> {{ fall.get_ort_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p data-konfliktpartei="{{ fall.konfliktpartei }}"><strong>Konfliktpartei:</strong> {{ fall.get_konfliktpartei_display }}</p>
+                    <p data-beschreibung="{{ fall.beschreibung }}"><strong>Beschreibung:</strong> {{ fall.beschreibung }}</p>
+                    <p data-vorfallsdatum="{{ fall.zeitpunkt_vorfall|date:"Y-m-d\TH:i:s" }}"><strong>Zeitpunkt des Vorfalls:</strong> {{ fall.zeitpunkt_vorfall|date:"d.m.Y H:i" }}</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <p data-erstellungsdatum="{{ fall.zeitpunkt_erstellung|date:"Y-m-d\TH:i:s" }}"><strong>Erstellt am:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
+                    <button class="btn btn-warning me-2">Als Spam melden</button>
+                    <button class="btn btn-success" onclick="zeigeAbschlussOptionen('{{ fall.kennung }}')">Fall schließen</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Spam-Fälle anzeigen -->
+    <button onclick="toggleSpamFaelle()" class="btn btn-secondary my-3">Spam-Fälle anzeigen/ausblenden</button>
+    <div id="spamFaelle" style="display: none;">
+        <h2>Abgelehnte Fälle (Spam)</h2>
+        <div id="spamListe">
+            {% for fall in spam_faelle %}
+            <div class="fall-container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p data-kennung="{{ fall.kennung }}"><strong>Kennung:</strong> {{ fall.kennung }}</p>
+                        <p data-jahrgangsstufe="{{ fall.jahrgangsstufe }}"><strong>Jahrgangsstufe:</strong> {{ fall.jahrgangsstufe }}</p>
+                        <p data-geschlecht="{{ fall.geschlecht }}"><strong>Geschlecht:</strong> {{ fall.get_geschlecht_display }}</p>
+                        <p data-ort="{{ fall.ort }}"><strong>Ort:</strong> {{ fall.get_ort_display }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p data-konfliktpartei="{{ fall.konfliktpartei }}"><strong>Konfliktpartei:</strong> {{ fall.get_konfliktpartei_display }}</p>
+                        <p data-beschreibung="{{ fall.beschreibung }}"><strong>Beschreibung:</strong> {{ fall.beschreibung }}</p>
+                        <p data-vorfallsdatum="{{ fall.zeitpunkt_vorfall|date:"Y-m-d\TH:i:s" }}"><strong>Zeitpunkt des Vorfalls:</strong> {{ fall.zeitpunkt_vorfall|date:"d.m.Y H:i" }}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <p data-erstellungsdatum="{{ fall.zeitpunkt_erstellung|date:"Y-m-d\TH:i:s" }}"><strong>Erstellt am:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
+                        <button class="btn btn-warning me-2">Als echten Fall melden</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <!-- Modal für Abschlussoptionen -->
+    <div class="modal" tabindex="-1" id="abschlussModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fall abschließen</h5>
+                    <button type="button" class="btn-close" onclick="schliesseAbschlussModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Hat der Fall ein positives oder ein negatives Ergebnis?</p>
+                    <button class="btn btn-success" onclick="schliesseFall('positiv_geschlossen')">Positiv abgeschlossen</button>
+                    <button class="btn btn-danger" onclick="schliesseFall('negativ_geschlossen')">Negativ abgeschlossen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+    function toggleSeitenleiste() {
+        var seitenleiste = document.getElementById("seitenleiste");
+        if (seitenleiste.classList.contains("visible")) {
+            seitenleiste.classList.remove("visible");
+        } else {
+            seitenleiste.classList.add("visible");
+        }
+    }
+
+    function toggleSpamFaelle() {
+        var spamFaelleDiv = document.getElementById("spamFaelle");
+        if (spamFaelleDiv.style.display === "none") {
+            spamFaelleDiv.style.display = "block";
+        } else {
+            spamFaelleDiv.style.display = "none";
+        }
+    }
+
+    function updateFaelle() {
+        var suchbegriff = document.getElementById("suchbegriff").value.toLowerCase();
+        var geschlecht = document.querySelector('input[name="geschlecht"]:checked').value;
+        var ort = document.getElementById("ortFilter").value;
+        var konfliktpartei = document.getElementById("konfliktparteiFilter").value;
+        var jahrgangsstufe = document.getElementById("jahrgangsstufeFilter").value;
+
+        var faelle = document.querySelectorAll("#faelleListe .fall-container");
+        var spamFaelle = document.querySelectorAll("#spamListe .fall-container");
+
+        function filterFaelle(faelle) {
+            faelle.forEach(function(fall) {
+                var kennung = fall.querySelector("[data-kennung]").getAttribute("data-kennung").toLowerCase();
+                var beschreibung = fall.querySelector("[data-beschreibung]").getAttribute("data-beschreibung").toLowerCase();
+                var fallGeschlecht = fall.querySelector("[data-geschlecht]").getAttribute("data-geschlecht");
+                var fallOrt = fall.querySelector("[data-ort]").getAttribute("data-ort");
+                var fallKonfliktpartei = fall.querySelector("[data-konfliktpartei]").getAttribute("data-konfliktpartei");
+                var fallJahrgangsstufe = fall.querySelector("[data-jahrgangsstufe]").getAttribute("data-jahrgangsstufe");
+
+                var matchesSearch = (kennung.includes(suchbegriff) || beschreibung.includes(suchbegriff));
+                var matchesGender = (geschlecht === "alle" || fallGeschlecht === geschlecht);
+                var matchesOrt = (ort === "alle" || fallOrt === ort);
+                var matchesKonfliktpartei = (konfliktpartei === "alle" || fallKonfliktpartei === konfliktpartei);
+                var matchesJahrgangsstufe = (!jahrgangsstufe || jahrgangsstufe === fallJahrgangsstufe);
+
+                if (matchesSearch && matchesGender && matchesOrt && matchesKonfliktpartei && matchesJahrgangsstufe) {
+                    fall.style.display = "";
+                } else {
+                    fall.style.display = "none";
+                }
+            });
+        }
+
+        // Filter auf normale Fälle und Spam-Fälle anwenden
+        filterFaelle(faelle);
+        filterFaelle(spamFaelle);
+    }
+
+    let sortBy = null;
+    let sortOrder = 'asc';
+
+    function setSortierung(by, order) {
+        sortBy = by;
+        sortOrder = order;
+        sortiereFaelle();
+    }
+
+    function sortiereFaelle() {
+        if (!sortBy) return;
+
+        var faelleListe = document.getElementById("faelleListe");
+        var spamListe = document.getElementById("spamListe");
+        var faelle = document.querySelectorAll("#faelleListe .fall-container");
+        var spamFaelle = document.querySelectorAll("#spamListe .fall-container");
+
+        var faelleArray = Array.from(faelle);
+        var spamFaelleArray = Array.from(spamFaelle);
+
+        function sortieren(array, container) {
+            array.sort(function(a, b) {
+                var aValue = new Date(a.querySelector(`[data-${sortBy}]`).getAttribute(`data-${sortBy}`));
+                var bValue = new Date(b.querySelector(`[data-${sortBy}]`).getAttribute(`data-${sortBy}`));
+
+                if (sortOrder === 'asc') {
+                    return aValue - bValue;
+                } else {
+                    return bValue - aValue;
+                }
+            });
+
+            // Fälle in der richtigen Reihenfolge anhängen
+            array.forEach(fall => container.appendChild(fall));
+        }
+
+        // Normale Fälle sortieren
+        sortieren(faelleArray, faelleListe);
+
+        // Spam-Fälle sortieren
+        sortieren(spamFaelleArray, spamListe);
+    }
+
+    let aktuelleKennung = "";
+
+    function zeigeAbschlussOptionen(kennung) {
+        aktuelleKennung = kennung;
+        var modal = document.getElementById("abschlussModal");
+        modal.style.display = "block";
+    }
+
+    function schliesseAbschlussModal() {
+        var modal = document.getElementById("abschlussModal");
+        modal.style.display = "none";
+    }
+
+    function schliesseFall(status) {
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value; // CSRF-Token für Django
+
+        fetch(`/fall/update_status/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                kennung: aktuelleKennung,
+                status: status
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log(`Fall ${aktuelleKennung} wurde ${status}`);
+                // Aktualisiere die Ansicht
+                location.reload();
+            } else {
+                console.error('Fehler beim Aktualisieren des Falls:', data.error);
+            }
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+        });
+
+        schliesseAbschlussModal();
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

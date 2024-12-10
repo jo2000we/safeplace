@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Fall melden</title>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 500px;
+        }
+        .form-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group label small {
+            font-weight: normal;
+            color: #777;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            padding: 12px;
+            font-size: 16px;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-toggle {
+            background-color: #007bff;
+            color: white;
+            border-radius: 20px;
+            padding: 5px 20px;
+            font-weight: bold;
+        }
+        .btn-toggle.active {
+            background-color: #28a745;
+        }
+        #datetimeGroup {
+            margin-top: 10px;
+        }
+        input, select, textarea {
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #007bff;
+            box-shadow: 0px 0px 5px rgba(0, 123, 255, 0.5);
+        }
+        .errorlist {
+            color: #dc3545;
+            margin-top: 5px;
+        }
+        #wordCounter {
+            transition: color 0.3s ease, font-weight 0.3s ease;
+        }
+        #wordCounter.warning {
+            color: red;
+            font-weight: bold;
+        }
+        @media (max-width: 768px) {
+            .form-container {
+                padding: 15px;
+            }
+            .btn-primary {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Fall melden</h2>
+        <div class="form-container">
+            <form method="post" id="fallForm">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="{{ form.jahrgangsstufe.id_for_label }}">In welcher Jahrgangsstufe bist du?</label>
+                    {{ form.jahrgangsstufe }}
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.geschlecht.id_for_label }}">Dein Geschlecht</label>
+                    {{ form.geschlecht }}
+                </div>
+                <div class="form-group">
+                    <label>Ist es gerade eben passiert?</label>
+                    <button type="button" class="btn btn-toggle" id="toggleButton">Ja</button>
+                    <input type="hidden" name="zeitpunkt_vorfall" id="hiddenZeitpunkt">
+                </div>
+                <div class="form-group" id="datetimeGroup" style="display: none;">
+                    <label for="zeitpunkt_vorfall">Wähle Datum und Uhrzeit des Vorfalls:</label>
+                    <input type="datetime-local" name="zeitpunkt_vorfall_manual" id="zeitpunktInput" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.konfliktpartei.id_for_label }}">Wer hat sich übergriffig verhalten?</label>
+                    {{ form.konfliktpartei }}
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.ort.id_for_label }}">Wo ist der Vorfall passiert?</label>
+                    {{ form.ort }}
+                </div>
+                <div class="form-group">
+                    <label for="{{ form.beschreibung.id_for_label }}">Was ist passiert?</label>
+                    {{ form.beschreibung }}
+                    <small id="wordCounter" class="form-text text-muted" aria-live="polite">
+                        Du kannst noch <span id="wordsLeft">500</span> Wörter eingeben.
+                    </small>
+                    <small class="form-text text-muted mt-2">
+                        <strong><span class="text-info">ℹ️</span> Wichtiger Hinweis:</strong> Bitte vermeide die Angabe personenbezogener Daten wie Namen in deiner Beschreibung. Falls solche Daten doch enthalten sind, werden sie automatisch durch Platzhalter ersetzt.
+                    </small>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Absenden</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const toggleButton = document.getElementById("toggleButton");
+        const datetimeGroup = document.getElementById("datetimeGroup");
+        const zeitpunktInput = document.getElementById("zeitpunktInput");
+        const hiddenZeitpunkt = document.getElementById("hiddenZeitpunkt");
+        const fallForm = document.getElementById("fallForm");
+        const beschreibungInput = document.getElementById("id_beschreibung");
+        const wordCounter = document.getElementById("wordCounter");
+        const wordsLeft = document.getElementById("wordsLeft");
+        const maxWords = 500; // Maximale Anzahl an Wörtern
+
+        // Standardwert für das Datum bei "Ja"
+        hiddenZeitpunkt.value = new Date().toISOString().slice(0, 16);
+
+        toggleButton.addEventListener("click", function() {
+            if (datetimeGroup.style.display === "none") {
+                datetimeGroup.style.display = "block";
+                this.textContent = "Nein";
+                this.classList.remove("active");
+                hiddenZeitpunkt.value = ""; // Entfernt Standardwert
+            } else {
+                datetimeGroup.style.display = "none";
+                this.textContent = "Ja";
+                this.classList.add("active");
+                hiddenZeitpunkt.value = new Date().toISOString().slice(0, 16); // Setzt aktuelles Datum
+            }
+        });
+
+        // Wörterzähler für das Feld "Beschreibung"
+        beschreibungInput.addEventListener("input", function() {
+            const text = beschreibungInput.value.trim();
+            const wordCount = text ? text.split(/\s+/).length : 0; // Zähle Wörter
+            const remainingWords = maxWords - wordCount;
+
+            // Aktualisiere den Zähler
+            wordsLeft.textContent = Math.max(0, remainingWords);
+
+            // Zeige Warnung bei Überschreitung und verhindere weiteres Schreiben
+            if (remainingWords < 0) {
+                wordCounter.classList.add("warning");
+                beschreibungInput.value = text.split(/\s+/).slice(0, maxWords).join(" "); // Text auf maxWords kürzen
+            } else {
+                wordCounter.classList.remove("warning");
+            }
+        });
+
+        // Beim Absenden sicherstellen, dass das korrekte Datum gesetzt ist
+        fallForm.addEventListener("submit", function(event) {
+            const text = beschreibungInput.value.trim();
+            if (text === "") {
+                event.preventDefault();
+                alert("Bitte beschreibe den Vorfall, bevor du das Formular absendest.");
+            }
+            if (datetimeGroup.style.display === "block" && zeitpunktInput.value) {
+                hiddenZeitpunkt.value = zeitpunktInput.value;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <title>Fall erfolgreich eingereicht</title>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="p-4 bg-white rounded shadow text-center">
+            <h2 class="mb-4">Vielen Dank!</h2>
+            <p>Dein Fall wurde erfolgreich im System gespeichert.</p>
+
+            <div class="alert alert-info my-4">
+                <strong>Fall-Kennung:</strong> {{ fall_id }}
+            </div>
+
+            <p>Bitte mach einen Screenshot von dieser Kennung oder notiere sie dir gut, da sie für eventuelle Beratungen benötigt wird.</p>
+
+            <h4 class="mt-4">Wie geht es weiter?</h4>
+            <p>Wenn du eine Beratung möchtest, melde dich mit dieser Kennung bei jemandem aus dem Beratungsteam der Ziehenschule. Die Beraterin oder der Berater kann auf den Fall zugreifen und ist bereits über die wichtigsten Informationen informiert.</p>
+
+            {% if fall.status == 'abgelehnt' %}
+                <div class="alert alert-warning mt-4">
+                    <strong>Warnung:</strong> Das System hat in deinem Fall potenziellen Spam erkannt, und er wurde vorerst nicht in die Statistik aufgenommen. Sollte es sich nicht um Spam handeln, wende dich bitte unter Angabe der Kennung an einen Beratungslehrer oder schreibe eine E-Mail an <a href="mailto:j.weber@ziehenschule.de">j.weber@ziehenschule.de</a>.
+                </div>
+            {% endif %}
+
+            <a href="{% url 'fall_erstellen' %}" class="btn btn-primary mt-4">Neuen Fall melden</a>
+        </div>
+    </div>
+</body>
+</html>

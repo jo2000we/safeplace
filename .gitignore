@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual Environment
+env/
+venv/
+
+# Django
+db.sqlite3
+media/
+.env
+
+# PyCharm
+.idea/
+/ZiehSafe/meldung/spam_model/
+/ZiehSafe/meldung/ner_model/
