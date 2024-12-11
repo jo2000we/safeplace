@@ -142,8 +142,8 @@
             <div class="row mt-3">
                 <div class="col-md-12">
                     <p data-erstellungsdatum="{{ fall.zeitpunkt_erstellung|date:"Y-m-d\TH:i:s" }}"><strong>Erstellt am:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
-                    <button class="btn btn-warning me-2">Als Spam melden</button>
-                    <button class="btn btn-success" onclick="zeigeAbschlussOptionen('{{ fall.kennung }}')">Fall schließen</button>
+                    <button class="btn btn-warning me-2" onclick="zeigeModal('echtspamModal', '{{ fall.kennung }}')">Als Spam melden</button>
+                    <button class="btn btn-success" onclick="zeigeModal('abschlussModal', '{{ fall.kennung }}')">Fall schließen</button>
                 </div>
             </div>
         </div>
@@ -173,7 +173,7 @@
                 <div class="row mt-3">
                     <div class="col-md-12">
                         <p data-erstellungsdatum="{{ fall.zeitpunkt_erstellung|date:"Y-m-d\TH:i:s" }}"><strong>Erstellt am:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
-                        <button class="btn btn-warning me-2">Als echten Fall melden</button>
+                        <button class="btn btn-warning me-2" onclick="zeigeModal('spamechtModal', '{{ fall.kennung }}')">Als echten Fall melden</button>
                     </div>
                 </div>
             </div>
@@ -186,16 +186,50 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Fall abschließen</h5>
-                    <button type="button" class="btn-close" onclick="schliesseAbschlussModal()"></button>
+                    <button type="button" class="btn-close" onclick="schliesseModal('abschlussModal')"></button>
                 </div>
                 <div class="modal-body">
                     <p>Hat der Fall ein positives oder ein negatives Ergebnis?</p>
-                    <button class="btn btn-success" onclick="schliesseFall('positiv_geschlossen')">Positiv abgeschlossen</button>
+                    <button class="btn btn-success me-2" onclick="schliesseFall('positiv_geschlossen')">Positiv abgeschlossen</button>
                     <button class="btn btn-danger" onclick="schliesseFall('negativ_geschlossen')">Negativ abgeschlossen</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Modal für Spam-Markierung -->
+    <div class="modal" tabindex="-1" id="spamechtModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Markierung ändern: Spam → Echt</h5>
+                    <button type="button" class="btn-close" onclick="schliesseModal('spamechtModal')"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Das Ändern der Markierung von 'Spam → Echt' wird protokolliert und als Trainingsdatensatz für die Spamerkennungs-KI verwendet. Bitte nur ändern, wenn absolut sicher!</p>
+                    <button class="btn btn-success me-2" onclick="aendereStatus('offen')">Ändern</button>
+                    <button class="btn btn-danger" onclick="schliesseModal('spamechtModal')">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" tabindex="-1" id="echtspamModal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Markierung ändern: Echt → Spam</h5>
+                    <button type="button" class="btn-close" onclick="schliesseModal('echtspamModal')"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Das Ändern der Markierung von 'Echt → Spam' wird protokolliert und als Trainingsdatensatz für die Spamerkennungs-KI verwendet. Bitte nur ändern, wenn absolut sicher!</p>
+                    <button class="btn btn-success me-2" onclick="aendereStatus('abgelehnt')">Ändern</button>
+                    <button class="btn btn-danger" onclick="schliesseModal('echtspamModal')">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 </div>
@@ -300,21 +334,29 @@
         sortieren(spamFaelleArray, spamListe);
     }
 
+    // Globale Variable für die aktuelle Kennung
     let aktuelleKennung = "";
 
-    function zeigeAbschlussOptionen(kennung) {
+    // Zeigt ein Modal an
+    function zeigeModal(id, kennung) {
         aktuelleKennung = kennung;
-        var modal = document.getElementById("abschlussModal");
-        modal.style.display = "block";
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.style.display = "block";
+        }
     }
 
-    function schliesseAbschlussModal() {
-        var modal = document.getElementById("abschlussModal");
-        modal.style.display = "none";
+    // Schließt ein Modal
+    function schliesseModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.style.display = "none";
+        }
     }
 
+    // Aktualisiert den Status eines Falls
     function schliesseFall(status) {
-        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value; // CSRF-Token für Django
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
         fetch(`/fall/update_status/`, {
             method: 'POST',
@@ -327,21 +369,57 @@
                 status: status
             }),
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP-Error: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                console.log(`Fall ${aktuelleKennung} wurde ${status}`);
-                // Aktualisiere die Ansicht
                 location.reload();
             } else {
-                console.error('Fehler beim Aktualisieren des Falls:', data.error);
+                alert('Fehler beim Aktualisieren: ' + data.error);
             }
         })
-        .catch((error) => {
-            console.error('Error:', error);
+        .catch(error => {
+            console.error('Netzwerkfehler:', error);
+            alert('Ein Netzwerkfehler ist aufgetreten.');
         });
+    }
 
-        schliesseAbschlussModal();
+    // Ändert den Status eines Falls (Spam -> Echt oder Echt -> Spam)
+    function aendereStatus(status) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(`/fall/update_spam/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                kennung: aktuelleKennung,
+                status: status
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP-Error: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Fehler beim Aktualisieren: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Netzwerkfehler:', error);
+            alert('Ein Netzwerkfehler ist aufgetreten.');
+        });
     }
 </script>
 

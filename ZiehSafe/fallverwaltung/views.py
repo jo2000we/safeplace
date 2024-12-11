@@ -26,6 +26,25 @@ def update_fall_status(request):
 
 
 @login_required
+def update_fall_spam(request):
+    if request.method == 'POST':
+        import json
+        data = json.loads(request.body)
+        kennung = data.get('kennung')
+        status = data.get('status')
+
+        try:
+            fall = Fall.objects.get(kennung=kennung)
+            fall.status = status
+            fall.save()
+            return JsonResponse({'success': True})
+        except Fall.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Fall nicht gefunden'})
+
+    return JsonResponse({'success': False, 'error': 'Ungültige Anfrage'})
+
+
+@login_required
 def fall_uebersicht(request):
     suchbegriff = request.GET.get('search', '')
     geschlecht_filter = request.GET.get('geschlecht', 'alle')

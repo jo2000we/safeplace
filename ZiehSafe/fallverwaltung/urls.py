@@ -12,4 +12,5 @@ urlpatterns = [
     path('fallverwaltung/abgeschlossene_faelle/', views.abgeschlossene_faelle, name='abgeschlossene_faelle'),
     path('statistiken/', views.statistiken, name='statistiken'),
     path('fall/update_status/', views.update_fall_status, name='update_fall_status'),
+    path('fall/update_spam/', views.update_fall_spam, name='update_fall_spam'),
 ]
