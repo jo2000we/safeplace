@@ -4,9 +4,12 @@ import pandas as pd
 from django.contrib.auth.decorators import login_required
 from meldung.models import Fall
 from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.db.models import Q
+from django.shortcuts import render
 from django.http import JsonResponse
+from .forms import StatistikForm
+from django.db.models import Count
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Verzeichnisse
@@ -157,8 +160,47 @@ def abgeschlossene_faelle(request):
 
 
 @login_required
-def statistiken(request):
-    return render(request, 'statistiken.html')
+def statistiken_view(request):
+    form = StatistikForm()
+    return render(request, 'statistiken.html', {'form': form})
+
+
+@login_required
+def statistiken_data(request):
+    # Eingaben verarbeiten
+    kategorie = request.GET.get('kategorie')
+    print(f"Empfangene Parameter: {request.GET}")
+    print(kategorie)
+    diagrammtyp = request.GET.get('diagrammtyp')
+
+    # Filter aus den GET-Parametern abrufen
+    filters = {
+        'jahrgangsstufe__gte': request.GET.get('jahrgangsstufe_min'),
+        'jahrgangsstufe__lte': request.GET.get('jahrgangsstufe_max'),
+        'geschlecht': request.GET.get('geschlecht'),
+        'ort': request.GET.get('ort'),
+        'status': request.GET.get('status'),
+    }
+
+    # Leere Filter entfernen
+    filters = {k: v for k, v in filters.items() if v}  # Entfernt leere oder None-Werte
+
+    # Validierung des ausgewählten Attributs
+    if not kategorie or kategorie not in ['jahrgangsstufe', 'geschlecht', 'ort', 'status']:
+        return JsonResponse({'error': 'Ungültige Kategorie ausgewählt.'}, status=400)
+
+    # Daten abrufen und gruppieren
+    try:
+        daten = (
+            Fall.objects.filter(**filters)
+            .values(kategorie)  # Gruppiere nach der gewählten Kategorie
+            .annotate(anzahl=Count('kennung'))  # Zähle Fälle pro Gruppe
+            .order_by('-anzahl')  # Sortiere absteigend nach Anzahl
+        )
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse(list(daten), safe=False)
 
 
 def benutzer_login(request):
