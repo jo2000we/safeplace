@@ -1,9 +1,17 @@
+import os
+
+import pandas as pd
 from django.contrib.auth.decorators import login_required
 from meldung.models import Fall
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.db.models import Q
 from django.http import JsonResponse
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Verzeichnisse
+SPAM_MODEL_DIR = os.path.join(BASE_DIR, 'meldung/spam_model')
+UPDATE_FILE = os.path.join(SPAM_MODEL_DIR, 'update.csv')
 
 
 @login_required
@@ -18,6 +26,7 @@ def update_fall_status(request):
             fall = Fall.objects.get(kennung=kennung)
             fall.status = status
             fall.save()
+
             return JsonResponse({'success': True})
         except Fall.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Fall nicht gefunden'})
@@ -37,6 +46,38 @@ def update_fall_spam(request):
             fall = Fall.objects.get(kennung=kennung)
             fall.status = status
             fall.save()
+
+            # Beschreibungs- und Status-Mapping für CSV
+            description = fall.beschreibung
+            label = 1 if status == 'offen' else 0
+
+            # Protokollierung in CSV
+            def log_update_to_csv(description, label):
+                import pandas as pd
+
+                # Prüfen, ob die Datei existiert
+                if os.path.exists(UPDATE_FILE):
+                    # Datei laden
+                    df = pd.read_csv(UPDATE_FILE)
+
+                    # Prüfen, ob die Beschreibung bereits existiert
+                    if description in df['text'].values:
+                        # Wert aktualisieren
+                        df.loc[df['text'] == description, 'label'] = label
+                    else:
+                        # Neue Zeile hinzufügen
+                        new_data = pd.DataFrame([{'text': description, 'label': label}])
+                        df = pd.concat([df, new_data], ignore_index=True)
+                else:
+                    # Neue Datei erstellen, wenn sie nicht existiert
+                    df = pd.DataFrame([{'text': description, 'label': label}])
+
+                # CSV speichern
+                df.to_csv(UPDATE_FILE, index=False)
+
+            # Aufruf der Funktion
+            log_update_to_csv(description, label)
+
             return JsonResponse({'success': True})
         except Fall.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Fall nicht gefunden'})
