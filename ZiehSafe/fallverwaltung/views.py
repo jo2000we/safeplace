@@ -216,8 +216,3 @@ def benutzer_login(request):
             return render(request, 'login.html', {'error': 'Ungültiger Benutzername oder Passwort'})
 
     return render(request, 'login.html')
-
-
-def benutzer_logout(request):
-    logout(request)
-    return redirect('/login/')

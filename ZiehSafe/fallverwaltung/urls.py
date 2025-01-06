@@ -7,7 +7,7 @@ from . import views
 urlpatterns = [
     path('fallverwaltung/fall_uebersicht/', views.fall_uebersicht, name='fall_uebersicht'),
     path('login/', views.benutzer_login, name='benutzer_login'),
-    path('logout/', LogoutView.as_view(), name='logout'),
+    path('logout/', LogoutView.as_view(next_page='/accounts/login/?next=/fallverwaltung/fall_uebersicht/'), name='logout'),
     path('accounts/login/', views.benutzer_login, name='accounts_login'),  # Alias für Login
     path('fallverwaltung/abgeschlossene_faelle/', views.abgeschlossene_faelle, name='abgeschlossene_faelle'),
     path('statistiken/', views.statistiken_view, name='statistiken'),
