@@ -2,13 +2,35 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
     <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
     <title>Fall erfolgreich eingereicht</title>
+    <style>
+        footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+            color: #555;
+            box-shadow: 0px -1px 5px rgba(0, 0, 0, 0.1);
+        }
+        footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container mt-5">
@@ -34,5 +56,9 @@
             <a href="{% url 'fall_erstellen' %}" class="btn btn-primary mt-4">Neuen Fall melden</a>
         </div>
     </div>
+    <br><br><br><br>
+    <footer>
+        <a href="https://www.ziehenschule.de/impressum.html" target="_blank">Impressum</a>
+    </footer>
 </body>
 </html>
