@@ -1,15 +1,17 @@
+from django.contrib.auth import get_user_model
+from datetime import timedelta, datetime
 import os
-
-import pandas as pd
-from django.contrib.auth.decorators import login_required
-from meldung.models import Fall
-from django.contrib.auth import authenticate, login, logout
-from django.shortcuts import redirect
+from django.contrib.auth import authenticate, login
 from django.db.models import Q
-from django.shortcuts import render
 from django.http import JsonResponse
 from .forms import StatistikForm
 from django.db.models import Count
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from .forms import TimeSlotForm, TimeSlotReassignmentForm
+from .models import TimeSlot
+from meldung.models import Fall
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Verzeichnisse
@@ -216,3 +218,200 @@ def benutzer_login(request):
             return render(request, 'login.html', {'error': 'Ungültiger Benutzername oder Passwort'})
 
     return render(request, 'login.html')
+
+
+User = get_user_model()  # Damit greifen wir auf das Teacher-Modell zu, falls es als AUTH_USER_MODEL registriert ist.
+
+
+@login_required
+def appointment_dashboard(request):
+    # Alte Zeitfenster löschen (Endzeit liegt vor dem aktuellen Zeitpunkt)
+    TimeSlot.objects.filter(end_time__lt=timezone.now()).delete()
+    teacher = request.user
+
+    # Gespeicherte Zeitfenster des aktuellen Lehrers
+    # Gebuchte Termine: mit zugeordnetem Fall (Termin mit gebuchtem Fall)
+    my_booked_timeslots = TimeSlot.objects.filter(
+        teacher=teacher,
+        fall__isnull=False
+    ).order_by('start_time')
+
+    # Freie Zeitfenster des aktuellen Lehrers (die du im Abschnitt "Meine freien Zeitfenster" anzeigen möchtest)
+    my_free_timeslots = TimeSlot.objects.filter(
+        teacher=teacher,
+        fall__isnull=True
+    ).order_by('start_time')
+
+    # Freie Zeitfenster von allen Lehrern, die in "Alle freien Zeitfenster" angezeigt werden
+    free_timeslots = TimeSlot.objects.filter(
+        fall__isnull=True,
+        start_time__gte=timezone.now()
+    ).order_by('start_time')
+
+    # Liste aller Lehrer (ohne den eigenen Account) für den Reassign-Modal
+    teacher_list = User.objects.exclude(id=teacher.id)
+
+    context = {
+        'my_booked_timeslots': my_booked_timeslots,
+        'my_timeslots': my_free_timeslots,  # Im Template als "Meine freien Zeitfenster" anzeigen
+        'free_timeslots': free_timeslots,
+        'teacher_list': teacher_list,
+        # Optional: Falls du auch Edit- oder Reassign-Formulare separat behandeln möchtest:
+        'edit_form': None,
+        'edit_timeslot': None,
+        'reassign_form': None,
+        'reassign_timeslot': None,
+    }
+
+    return render(request, 'appointment_dashboard.html', context)
+
+
+@login_required
+def edit_appointment(request, timeslot_id):
+    teacher = request.user
+    # Stelle sicher, dass der TimeSlot zum aktuellen Lehrer gehört
+    timeslot = get_object_or_404(TimeSlot, id=timeslot_id, teacher=teacher)
+
+    if request.method == 'POST':
+        form = TimeSlotForm(request.POST, instance=timeslot)
+        if form.is_valid():
+            form.save()
+            return redirect('appointment_dashboard')
+    else:
+        form = TimeSlotForm(instance=timeslot)
+
+    # Holen aller relevanten Zeitfenster, damit alle Abschnitte auf dem Dashboard sichtbar bleiben.
+    # Gebuchte Termine (für den Bereich "Meine Termine")
+    my_booked_timeslots = TimeSlot.objects.filter(
+        teacher=teacher,
+        fall__isnull=False
+    ).order_by('start_time')
+
+    # Freie Zeitfenster des aktuellen Lehrers (für den Bereich "Meine freien Zeitfenster")
+    my_free_timeslots = TimeSlot.objects.filter(
+        teacher=teacher,
+        fall__isnull=True
+    ).order_by('start_time')
+
+    # Freie Zeitfenster von allen Lehrern (für den Bereich "Alle freien Zeitfenster")
+    free_timeslots = TimeSlot.objects.filter(
+        fall__isnull=True,
+        start_time__gte=timezone.now()
+    ).order_by('start_time')
+
+    # Liste aller Lehrer (ohne den aktuellen Lehrer) für den Reassign-Modal
+    User = get_user_model()
+    teacher_list = User.objects.exclude(id=teacher.id)
+
+    context = {
+        'my_booked_timeslots': my_booked_timeslots,
+        'my_timeslots': my_free_timeslots,  # Wird im Template als "Meine freien Zeitfenster" angezeigt
+        'free_timeslots': free_timeslots,
+        'teacher_list': teacher_list,
+        'edit_form': form,  # Wird zur Anzeige des Edit-Modals genutzt
+        'edit_timeslot': timeslot,  # Damit das Modal weiß, um welchen Termin es geht
+    }
+
+    return render(request, 'appointment_dashboard.html', context)
+
+
+@login_required
+def reassign_appointment(request, timeslot_id):
+    timeslot = get_object_or_404(TimeSlot, id=timeslot_id)
+    if request.method == 'POST':
+        form = TimeSlotReassignmentForm(request.POST)
+        if form.is_valid():
+            new_teacher = form.cleaned_data['new_teacher']
+            timeslot.teacher = new_teacher
+            timeslot.save()
+            return redirect('appointment_dashboard')
+    else:
+        form = TimeSlotReassignmentForm()
+
+    teacher = request.user
+    my_timeslots = TimeSlot.objects.filter(teacher=teacher).order_by('start_time')
+    free_timeslots = TimeSlot.objects.filter(fall__isnull=True, start_time__gte=timezone.now()).order_by('start_time')
+    context = {
+        'my_timeslots': my_timeslots,
+        'free_timeslots': free_timeslots,
+        'reassign_form': form,
+        'reassign_timeslot': timeslot,
+    }
+    return render(request, 'appointment_dashboard.html', context)
+
+
+@login_required
+def create_appointment(request):
+    if request.method == "POST":
+        # Hole Daten aus dem Formular
+        start_time_str = request.POST.get("start_time")
+        duration_str = request.POST.get("duration", "15")
+        phone_number = request.POST.get("phone_number")
+        repeat = request.POST.get("repeat")  # Checkbox: Gibt 'on' zurück, wenn aktiviert
+        repeat_end_date_str = request.POST.get("repeat_end_date") if repeat else None
+
+        try:
+            duration = int(duration_str)
+        except ValueError:
+            # Ungültiger Wert für Dauer
+            return render(request, "appointment_dashboard.html", {
+                "error": "Ungültiger Wert für die Dauer.",
+            })
+
+        # Parse den Startzeitpunkt
+        try:
+            # Der datetime-local Input liefert einen String im Format "YYYY-MM-DDThh:mm"
+            start_time = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+        except Exception as e:
+            return render(request, "appointment_dashboard.html", {
+                "error": f"Ungültiges Datum/Zeitformat: {e}"
+            })
+
+        # Berechne Endzeit automatisch anhand der Dauer
+        end_time = start_time + timedelta(minutes=duration)
+        teacher = request.user
+
+        # Falls keine Wiederholung gewünscht ist, erstellen wir ein einzelnes TimeSlot
+        if not repeat or not repeat_end_date_str:
+            TimeSlot.objects.create(
+                teacher=teacher,
+                start_time=start_time,
+                end_time=end_time,
+                phone_number = phone_number
+            )
+        else:
+            # Wiederholung: parse das Wiederholungsende-Datum (Format: "YYYY-MM-DD")
+            try:
+                repeat_end_date = datetime.strptime(repeat_end_date_str, "%Y-%m-%d").date()
+            except Exception as e:
+                return render(request, "appointment_dashboard.html", {
+                    "error": f"Ungültiges Wiederholungsende-Datum: {e}"
+                })
+
+            # Erstelle ein Zeitfenster für jede Woche ab dem Startzeitpunkt, solange das Datum noch <= repeat_end_date ist.
+            current_start = start_time
+            while current_start.date() <= repeat_end_date:
+                current_end = current_start + timedelta(minutes=duration)
+                TimeSlot.objects.create(
+                    teacher=teacher,
+                    start_time=current_start,
+                    end_time=current_end,
+                    phone_number = phone_number
+                )
+                current_start += timedelta(days=7)
+
+        return redirect("appointment_dashboard")
+    else:
+        # Falls nicht POST, umleiten zur Dashboard-Seite
+        return redirect("appointment_dashboard")
+
+
+@login_required
+def delete_appointment(request, timeslot_id):
+    # Nur freie Zeitfenster, die dem aktuellen Lehrer gehören, löschen
+    timeslot = get_object_or_404(TimeSlot, id=timeslot_id, teacher=request.user, fall__isnull=True)
+    if request.method == 'POST':
+        timeslot.delete()
+        return redirect('appointment_dashboard')
+    # Falls GET: Kann alternativ auch einen Fallback haben oder per AJAX genutzt werden
+    return redirect('appointment_dashboard')

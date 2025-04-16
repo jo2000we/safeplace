@@ -38,18 +38,32 @@
 
 <div class="container">
     <!-- Navigationsleiste -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <button class="btn btn-secondary" onclick="toggleSidebar()">Suche</button>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'fall_uebersicht' %}" class="btn btn-primary">Offene Fälle</a>
-            <a href="{% url 'statistiken' %}" class="btn btn-primary">Statistiken</a>
-        </div>
-        <div>
-            <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
-        </div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Fallübersicht</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'fall_uebersicht' %}">Offene Fälle</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{% url 'abgeschlossene_faelle' %}">Abgeschlossene Fälle</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'statistiken' %}">Statistiken</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'appointment_dashboard' %}">Terminverwaltung</a>
+          </li>
+        </ul>
+        <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+      </div>
     </div>
+    </nav>
+    <br><br><br><br>
 
     <!-- Seitenleiste für die Suche -->
     <div id="sidebar" style="display:none;">

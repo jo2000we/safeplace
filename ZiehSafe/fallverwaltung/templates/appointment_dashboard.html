@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <title>Terminverwaltung – Sprechstundentermine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding-top: 60px; }
+    .form-section { margin-bottom: 30px; }
+    #end_time_display {
+      font-weight: bold;
+      padding: 0.375rem 0.75rem;
+      background-color: #e9ecef;
+      border-radius: 0.25rem;
+      border: 1px solid #ced4da;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Sprechstunden</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'fall_uebersicht' %}">Offene Fälle</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'abgeschlossene_faelle' %}">Abgeschlossene Fälle</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{% url 'statistiken' %}">Statistiken</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{% url 'appointment_dashboard' %}">Terminverwaltung</a>
+          </li>
+        </ul>
+        <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+      </div>
+    </div>
+  </nav>
+  <br>
+
+  <div class="container my-4">
+    <h1 class="mb-4">Terminverwaltung</h1>
+
+    <!-- Abschnitt: Neues Zeitfenster erstellen -->
+    <section class="form-section">
+      <h2>Neues Zeitfenster erstellen</h2>
+      <form id="createTimeSlotForm" action="{% url 'create_appointment' %}" method="POST">
+        {% csrf_token %}
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="start_time" class="form-label">Zeitpunkt</label>
+            <input type="datetime-local" id="start_time" name="start_time" class="form-control" required>
+          </div>
+          <div class="col-md-3">
+            <label for="duration" class="form-label">Dauer (Min.)</label>
+            <input type="number" id="duration" name="duration" class="form-control" value="15" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Endzeit</label>
+            <div id="end_time_display">--:--</div>
+          </div>
+        </div>
+        <!-- Neues Feld für Telefonnummer -->
+        <div class="row mb-3">
+          <div class="col-md-12">
+            <label for="phone_number" class="form-label">Telefonnummer</label>
+            <input type="text" id="phone_number" name="phone_number" class="form-control" placeholder="z. B. +49 123 456789">
+          </div>
+        </div>
+
+        <div class="form-check mb-3">
+          <input type="checkbox" id="repeat_checkbox" name="repeat" class="form-check-input">
+          <label for="repeat_checkbox" class="form-check-label">Wiederholen</label>
+        </div>
+
+        <div id="repeat_fields" class="row mb-3" style="display: none;">
+          <div class="col-md-6">
+            <label for="repeat_end_date" class="form-label">Wiederholungsende</label>
+            <input type="date" id="repeat_end_date" name="repeat_end_date" class="form-control">
+          </div>
+          <!-- Optional: Wiederholungsintervall (z.B. in Tagen, standardmäßig 7 für wöchentliche Wiederholung) -->
+          <!--
+          <div class="col-md-6">
+            <label for="repeat_interval" class="form-label">Intervall (Tage)</label>
+            <input type="number" id="repeat_interval" name="repeat_interval" class="form-control" value="7">
+          </div>
+          -->
+        </div>
+
+        <button type="submit" class="btn btn-primary">Zeitfenster erstellen</button>
+      </form>
+    </section>
+
+    <hr>
+
+    <!-- Abschnitt: Meine Termine (gebuchte Zeitfenster) -->
+    {% if my_booked_timeslots %}
+    <section class="form-section">
+      <h2>Meine Termine</h2>
+      <div class="row">
+        {% for slot in my_booked_timeslots %}
+          <div class="col-md-4">
+            <div class="card mb-2">
+              <div class="card-body">
+                {% if slot.start_time|date:"Y-m-d" == slot.end_time|date:"Y-m-d" %}
+                  <h5 class="card-title">
+                    {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"H:i" }}
+                  </h5>
+                {% else %}
+                  <h5 class="card-title">
+                    {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"l, j. F Y H:i" }}
+                  </h5>
+                {% endif %}
+                <div class="mb-2">
+                  <strong>Beschreibung:</strong> {{ slot.fall.beschreibung }}<br>
+                  <strong>Ort:</strong> {{ slot.fall.ort }}<br>
+                  <strong>Jahrgangsstufe:</strong> {{ slot.fall.jahrgangsstufe }}<br>
+                  <strong>Geschlecht:</strong> {{ slot.fall.get_geschlecht_display }}<br>
+                  <strong>Status:</strong> {{ slot.fall.get_status_display }}<br>
+                  <strong>Zeitpunkt der Meldung:</strong> {{ slot.fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}
+                  <strong>Telefonnummer:</strong> {{ slot.phone_number }}
+                  <!-- Hier können weitere Fallinformationen ergänzt werden -->
+                </div>
+                <!-- Nur "Termin zuweisen" (Reassign) anbieten -->
+                <button type="button" class="btn btn-warning btn-sm"
+                        onclick="openReassignModal('{{ slot.id }}')">
+                  Termin zuweisen
+                </button>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <hr>
+
+    <!-- Abschnitt: Meine freien Zeitfenster (des aktuellen Lehrers) -->
+    <section class="form-section">
+      <h2>Meine freien Zeitfenster</h2>
+      {% if my_timeslots %}
+        <div class="row">
+          {% for slot in my_timeslots %}
+            <div class="col-md-4">
+              <div class="card mb-2">
+                <div class="card-body">
+                  {% if slot.start_time|date:"Y-m-d" == slot.end_time|date:"Y-m-d" %}
+                    <h5 class="card-title">
+                      {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"H:i" }}
+                    </h5>
+                  {% else %}
+                    <h5 class="card-title">
+                      {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"l, j. F Y H:i" }}
+                    </h5>
+                  {% endif %}
+                  <p class="card-text text-success"><strong>Frei</strong></p>
+                  <a href="{% url 'edit_appointment' slot.id %}" class="btn btn-primary btn-sm">Bearbeiten</a>
+                  <button type="button" class="btn btn-danger btn-sm"
+                          onclick="openDeleteModal('{{ slot.id }}', '{{ slot.start_time|date:"d.m.Y H:i" }} – {{ slot.end_time|date:"d.m.Y H:i" }}')">
+                          Löschen
+                  </button>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Du hast noch keine freien Zeitfenster angelegt.</p>
+      {% endif %}
+    </section>
+
+    <hr>
+
+    <!-- Abschnitt: Alle freien Zeitfenster (von allen Lehrern) -->
+    <section class="form-section">
+      <h2>Alle freien Zeitfenster</h2>
+      {% if free_timeslots %}
+        <div class="row">
+          {% for slot in free_timeslots %}
+            <div class="col-md-4">
+              <div class="card mb-2">
+                <div class="card-body">
+                  {% if slot.start_time|date:"Y-m-d" == slot.end_time|date:"Y-m-d" %}
+                    <h5 class="card-title">
+                      {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"H:i" }}
+                    </h5>
+                  {% else %}
+                    <h5 class="card-title">
+                      {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"l, j. F Y H:i" }}
+                    </h5>
+                  {% endif %}
+                  <p class="card-text">
+                    Lehrer: {{ slot.teacher.username }}<br>
+                    Geschlecht: {{ slot.teacher.get_gender_display|default:"unbekannt" }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Derzeit sind keine freien Zeitfenster vorhanden.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- Modal für Terminlöschung -->
+  <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="deleteForm" method="post" action="">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel">Termin löschen bestätigen</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            <p>Möchtest du dieses Zeitfenster wirklich löschen?</p>
+            <p id="deleteSlotInfo"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-danger">Ja, Termin löschen</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal für Terminzuweisung (Reassign) -->
+  <div class="modal fade" id="reassignModal" tabindex="-1" aria-labelledby="reassignModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="reassignForm" method="post" action="">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="reassignModalLabel">Termin einem anderen Lehrer zuweisen</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            <p>Wähle einen anderen Lehrer aus:</p>
+            <select id="teacherSelect" name="new_teacher" class="form-select">
+              {% for teacher in teacher_list %}
+                {% if teacher != request.user %}
+                  <option value="{{ teacher.id }}">{{ teacher.username }} – {{ teacher.get_gender_display }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-warning">Termin zuweisen</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal für Terminbearbeitung (Edit) -->
+  {% if edit_form %}
+  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="editForm" method="post" action="{% url 'edit_appointment' edit_timeslot.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title" id="editModalLabel">Termin bearbeiten</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+          </div>
+          <div class="modal-body">
+            {{ edit_form.as_p }}
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-success">Änderungen speichern</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Bootstrap JS Bundle (inkl. Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- JavaScript: Endzeitberechnung, Wiederholungsfelder, Delete- und Reassign-Modale -->
+  <script>
+    // Endzeit berechnen (Ausgehend von Startzeit + Dauer)
+    function updateEndTime() {
+      const startTimeInput = document.getElementById('start_time');
+      const durationInput = document.getElementById('duration');
+      const endTimeDisplay = document.getElementById('end_time_display');
+      const startTimeValue = startTimeInput.value;
+      const durationValue = parseInt(durationInput.value);
+      if (startTimeValue && !isNaN(durationValue)) {
+        const startDate = new Date(startTimeValue);
+        if (!isNaN(startDate.getTime())) {
+          const endDate = new Date(startDate.getTime() + durationValue * 60000);
+          const day = String(endDate.getDate()).padStart(2, '0');
+          const month = String(endDate.getMonth() + 1).padStart(2, '0');
+          const year = endDate.getFullYear();
+          const hours = String(endDate.getHours()).padStart(2, '0');
+          const minutes = String(endDate.getMinutes()).padStart(2, '0');
+          endTimeDisplay.innerText = `${day}.${month}.${year} ${hours}:${minutes}`;
+        } else {
+          endTimeDisplay.innerText = '--:--';
+        }
+      } else {
+        endTimeDisplay.innerText = '--:--';
+      }
+    }
+    document.getElementById('start_time').addEventListener('change', updateEndTime);
+    document.getElementById('duration').addEventListener('input', updateEndTime);
+    document.addEventListener('DOMContentLoaded', updateEndTime);
+
+    // Wiederholungsfelder ein-/ausblenden
+    document.getElementById('repeat_checkbox').addEventListener('change', function() {
+      const repeatFields = document.getElementById('repeat_fields');
+      repeatFields.style.display = this.checked ? 'flex' : 'none';
+    });
+
+    // Delete Modal: URL-Template anpassen
+    const deleteUrlTemplate = "{% url 'delete_appointment' 0 %}";
+    function openDeleteModal(timeslotId, timeslotInfo) {
+      const deleteUrl = deleteUrlTemplate.replace("/0/", "/" + timeslotId + "/");
+      document.getElementById("deleteForm").action = deleteUrl;
+      document.getElementById("deleteSlotInfo").innerText = timeslotInfo;
+      var deleteModal = new bootstrap.Modal(document.getElementById("deleteModal"), {});
+      deleteModal.show();
+    }
+
+    // Reassign Modal: URL-Template anpassen
+    const reassignUrlTemplate = "{% url 'reassign_appointment' 0 %}";
+    function openReassignModal(timeslotId) {
+      const reassignUrl = reassignUrlTemplate.replace("/0/", "/" + timeslotId + "/");
+      document.getElementById("reassignForm").action = reassignUrl;
+      var reassignModal = new bootstrap.Modal(document.getElementById("reassignModal"), {});
+      reassignModal.show();
+    }
+    // Falls die View mit edit_form geliefert wurde, Modal automatisch öffnen
+    {% if edit_form %}
+      var editModal = new bootstrap.Modal(document.getElementById("editModal"), {});
+      editModal.show();
+    {% endif %}
+  </script>
+</body>
+</html>

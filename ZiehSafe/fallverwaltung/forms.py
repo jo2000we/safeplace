@@ -1,5 +1,7 @@
 from django import forms
+from django.contrib.auth import get_user_model
 from meldung.models import Fall
+from .models import TimeSlot
 
 
 class StatistikForm(forms.Form):
@@ -57,4 +59,24 @@ class StatistikForm(forms.Form):
         choices=DIAGRAMMTYPEN,
         label="Wie sollen die Ergebnisse dargestellt werden?",
         widget=forms.RadioSelect
+    )
+
+
+class TimeSlotForm(forms.ModelForm):
+    class Meta:
+        model = TimeSlot
+        fields = ['start_time', 'end_time', 'phone_number']
+        widgets = {
+            'start_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'end_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        }
+
+
+Teacher = get_user_model()  # Das benutzerdefinierte Teacher-Modell
+
+class TimeSlotReassignmentForm(forms.Form):
+    new_teacher = forms.ModelChoiceField(
+        queryset=Teacher.objects.all(),
+        label="Neuer Lehrer",
+        empty_label="Bitte auswählen"
     )
