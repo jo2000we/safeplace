@@ -1,3 +1,5 @@
+# meldung/views.py
+from fallverwaltung.models import TimeSlot
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import FallForm
 from .models import Fall
@@ -96,8 +98,59 @@ def fall_erstellen_view(request):
 
 def fall_erfolgreich_view(request, fall_id):
     fall = get_object_or_404(Fall, kennung=fall_id)
-    return render(request, 'meldung/fall_erfolgreich.html', {'fall_id': fall_id})
+
+    # Prüfen, ob schon ein TimeSlot für diesen Fall gebucht ist
+    booked_slot = TimeSlot.objects.filter(fall=fall).first()
+
+    # Alle aktuell freien Slots. Optional: nur in der Zukunft filtern
+    free_slots = TimeSlot.objects.filter(fall__isnull=True)
+
+    return render(request, 'meldung/fall_erfolgreich.html', {
+        'fall_id': fall_id,
+        'fall': fall,
+        'timeslot': booked_slot,
+        'free_timeslots': free_slots,
+    })
 
 
 def landing_page_view(request):
     return render(request, 'landing_page.html')
+
+
+def book_consultation_view(request, fall_id):
+    """Verknüpft einen freien TimeSlot mit dem Fall."""
+    if request.method == 'POST':
+        timeslot_id = request.POST.get('timeslot_id')
+        fall = get_object_or_404(Fall, kennung=fall_id)
+        timeslot = get_object_or_404(TimeSlot, id=timeslot_id)
+
+        # Prüfen, ob der Slot noch frei ist (kein Fall zugewiesen)
+        if timeslot.fall is None:
+            timeslot.fall = fall
+            timeslot.save()
+            # Zurückleiten zur gleichen Seite, damit der Schüler
+            # jetzt den gebuchten Termin sieht
+            return redirect('fall_erfolgreich', fall_id=fall_id)
+        else:
+            # Schon belegt → Fehlermeldung
+            return render(request, 'meldung/fall_erfolgreich.html', {
+                'fall': fall,
+                'fall_id': fall_id,
+                'error_message': 'Dieser Termin ist leider nicht mehr verfügbar.'
+            })
+    # Falls jemand per GET kommt, leite einfach zurück
+    return redirect('fall_erfolgreich', fall_id=fall_id)
+
+
+def cancel_appointment_view(request, fall_id):
+    """Setzt den zugewiesenen Termin (TimeSlot) wieder auf frei."""
+    if request.method == 'POST':
+        fall = get_object_or_404(Fall, kennung=fall_id)
+        # Wir nehmen an, jeder Fall hat max. einen TimeSlot?
+        timeslot = TimeSlot.objects.filter(fall=fall).first()
+        if timeslot:
+            timeslot.fall = None
+            timeslot.save()
+        return redirect('fall_erfolgreich', fall_id=fall_id)
+
+    return redirect('fall_erfolgreich', fall_id=fall_id)

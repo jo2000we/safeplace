@@ -3,11 +3,24 @@
 <head>
   {% load static %}
   <meta charset="UTF-8">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <title>Fall erfolgreich eingereicht</title>
+  <title>Vielen Dank für deine Meldung</title>
   <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .container {
+      max-width: 700px;
+      margin-bottom: 5rem; /* Abstand nach unten, damit der Footer nicht drüber liegt */
+    }
+    .section-title {
+      margin-top: 30px;
+    }
     footer {
       position: fixed;
       bottom: 0;
@@ -26,96 +39,225 @@
     footer a:hover {
       text-decoration: underline;
     }
-    .consultation-section {
-      margin-top: 30px;
-      padding: 20px;
-      background-color: #e8f5e9;
-      border: 1px solid #c8e6c9;
-      border-radius: 5px;
+    /* Optional kleine Anpassung für die Karten im Termin-Grid */
+    .card h5 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
     }
-    .timeslot-option {
-      border: 1px solid #ced4da;
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 10px;
-    }
-    .timeslot-option span {
-      font-weight: bold;
+    .card p {
+      margin-bottom: 0.5rem;
     }
   </style>
 </head>
-<body class="bg-light">
-  <div class="container mt-5">
-    <div class="p-4 bg-white rounded shadow text-center">
-      {% if fall.status == 'abgelehnt' %}
-        <!-- Fall als Spam erkannt -->
-        <h2 class="mb-4">Achtung – Spam erkannt!</h2>
-        <div class="alert alert-warning">
-          Das System hat diesen Fall als Spam markiert. Die Spam-Erkennung ist zwar hilfreich, funktioniert aber nicht immer 100% zuverlässig.
-          <br>
-          Falls du eine Beratung wünschst, wende dich bitte per E-Mail an <a href="mailto:beratung@ziehenschule.de">beratung@ziehenschule.de</a> und gib bitte die Fallnummer
-          <strong>{{ fall_id }}</strong> an.
-        </div>
-      {% else %}
-        <!-- Fall wurde erfolgreich aufgenommen -->
-        <h2 class="mb-4">Vielen Dank!</h2>
-        <div class="alert alert-success">
-          Dein Fall wurde erfolgreich aufgenommen.
-        </div>
-        <p>
-          Möchtest du einen telefonischen Sprechstundentermin vereinbaren? Nur so können weitere Maßnahmen zur Beratung durchgeführt werden.
-          Bitte wähle einen der folgenden freien Termine aus:
-        </p>
-        <!-- Formular für telefonische Sprechstunde (optional) -->
-        {% if free_timeslots %}
-          <form method="post" action="{% url 'book_consultation' fall_id %}">
-            {% csrf_token %}
-            <div class="mb-3">
-              {% for slot in free_timeslots %}
-                <div class="form-check timeslot-option">
-                  <input class="form-check-input" type="radio" name="timeslot_id" id="slot{{ slot.id }}" value="{{ slot.id }}" required>
-                  <label class="form-check-label" for="slot{{ slot.id }}">
-                    {{ slot.start_time|date:"l, j. F Y H:i" }} – {{ slot.end_time|date:"H:i" }}
-                    (Lehrer: {{ slot.teacher.username }}, Geschlecht: {{ slot.teacher.get_gender_display }})
-                  </label>
-                </div>
-              {% endfor %}
-            </div>
-            <button type="submit" class="btn btn-primary">Sprechstundentermin buchen</button>
-          </form>
-        {% else %}
-          <p class="text-muted">Derzeit sind leider keine freien Sprechstundentermine verfügbar.</p>
-        {% endif %}
-      {% endif %}
+<body>
+<div class="container mt-5">
+
+  {% if fall.status == 'abgelehnt' %}
+    <!-- Spam-Fall: Kein Termin buchbar, stattdessen Warnhinweis -->
+    <h2>Vielen Dank für deine Meldung!</h2>
+    <div class="alert alert-warning mt-4">
+      <strong>Hinweis:</strong> Unser System hat deinen Fall leider als <strong>möglichen Spam</strong> eingestuft.
+      Es kann sein, dass hier ein Fehler passiert ist. Wenn du dennoch Beratung wünschst,
+      melde dich bitte per E-Mail an
+      <a href="mailto:beratung@ziehenschule.de">beratung@ziehenschule.de</a> und gib deine Fallkennung
+      <strong>{{ fall.kennung }}</strong> an.
+      <br>
+      Wir gehen grundsätzlich anonym mit deinen Daten um. Falls du weitere Hilfe möchtest,
+      schreibe uns bitte.
     </div>
 
-    <hr>
+    <hr class="section-title">
+    <h4>Informationen zu deinem Fall</h4>
+    <div class="card mb-4">
+      <div class="card-body">
+        <p><strong>Fallkennung:</strong> {{ fall.kennung }}</p>
+        <p><strong>Jahrgangsstufe:</strong> {{ fall.jahrgangsstufe }}</p>
+        <p><strong>Geschlecht:</strong> {{ fall.get_geschlecht_display }}</p>
+        <p><strong>Ort:</strong> {{ fall.ort }}</p>
+        <p data-konfliktpartei="{{ fall.konfliktpartei }}">
+          <strong>Konfliktpartei:</strong> {{ fall.get_konfliktpartei_display }}
+        </p>
+        <p>
+          <strong>Beschreibung:</strong><br>
+          {{ fall.beschreibung }}
+          <br>
+          <small class="text-muted">
+            Aus datenschutzrechtlichen Gründen wurden ggf. personenbezogene Daten wie Namen
+            vor der Speicherung automatisch anonymisiert.
+          </small>
+        </p>
+        <p><strong>Zeitpunkt der Meldung:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
+      </div>
+    </div>
+    <!-- Keine Terminbuchung für Spam-Fälle -->
 
-    <!-- Sektion: Anzeige aller Falldaten -->
-    <div class="mt-4">
-      <h3>Gespeicherter Fall</h3>
-      <div class="card">
+  {% else %}
+    <!-- Kein Spam-Fall: Möglichkeit zur Terminbuchung -->
+
+    {% if timeslot %}
+      <!-- Termin bereits gebucht -->
+      <h2>Vielen Dank für dein Vertrauen!</h2>
+      <div class="alert alert-info mt-4">
+        <p>
+          Du hast einen Beratungstermin vereinbart. Bitte ruf zur angegebenen Zeit
+          <strong>mit unterdrückter Nummer</strong> unter folgender Telefonnummer an:
+        </p>
+        <ul>
+          <li><strong>Datum/Uhrzeit:</strong>
+            {{ timeslot.start_time|date:"d.m.Y H:i" }}
+            – {{ timeslot.end_time|date:"H:i" }}</li>
+          <li><strong>Geschlecht der Beratungslehrkraft:</strong> {{ timeslot.teacher.get_gender_display|default:"-" }}</li>
+          <li><strong>Telefonnummer:</strong> {{ timeslot.phone_number }}</li>
+        </ul>
+        <p>
+          Wenn du dich umentscheiden solltest, sag den Termin bitte rechtzeitig ab,
+          damit wir den Termin anderen zur Verfügung stellen können.
+        </p>
+      </div>
+
+      <hr class="section-title">
+      <h4>Informationen zu deinem Fall</h4>
+      <div class="card mb-4">
         <div class="card-body">
-          <p><strong>Kennung:</strong> {{ fall.kennung }}</p>
+          <p><strong>Fallkennung:</strong> {{ fall.kennung }}</p>
           <p><strong>Jahrgangsstufe:</strong> {{ fall.jahrgangsstufe }}</p>
           <p><strong>Geschlecht:</strong> {{ fall.get_geschlecht_display }}</p>
           <p><strong>Ort:</strong> {{ fall.ort }}</p>
+          <p data-konfliktpartei="{{ fall.konfliktpartei }}">
+            <strong>Konfliktpartei:</strong> {{ fall.get_konfliktpartei_display }}
+          </p>
+          <p>
+            <strong>Beschreibung:</strong><br>
+            {{ fall.beschreibung }}
+            <br>
+            <small class="text-muted">
+              Aus datenschutzrechtlichen Gründen wurden ggf. personenbezogene Daten wie Namen
+              vor der Speicherung automatisch anonymisiert.
+            </small>
+          </p>
           <p><strong>Zeitpunkt der Meldung:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
-          <p><strong>Status:</strong> {{ fall.get_status_display }}</p>
-          <p><strong>Beschreibung:</strong></p>
-          <p>{{ fall.beschreibung }}</p>
-          <!-- Ergänze hier weitere Felder, falls erforderlich -->
         </div>
       </div>
-    </div>
-  </div>
 
-  <br><br><br><br>
-  <footer>
-    <a href="https://www.ziehenschule.de/impressum.html" target="_blank">Impressum</a>
-  </footer>
+      <form method="post" action="{% url 'cancel_appointment' fall_id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">
+          Termin absagen
+        </button>
+      </form>
 
-  <!-- Bootstrap JS Bundle -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% else %}
+      <!-- Noch kein Termin gebucht -->
+      <h2>Vielen Dank für dein Vertrauen!</h2>
+      <div class="alert alert-success mt-4">
+        <p>
+          Wir haben deinen Fall erhalten. Wir behandeln alle Daten anonym.
+        </p>
+        <p>
+          Damit wir dir besser helfen können, ist eine
+          <strong>freiwillige telefonische Sprechstunde</strong> oft sehr sinnvoll.
+          Wenn du möchtest, dass wir aktiv werden oder noch mehr über deine Situation erfahren,
+          <strong>musst</strong> du an einer solchen Sprechstunde teilnehmen.
+          <br>
+          Aber auch wenn du dir nicht sicher bist, ob du weitere Schritte willst,
+          kannst du dich gerne in einem Telefonat beraten lassen und uns mehr erzählen.
+        </p>
+      </div>
+
+      <hr class="section-title">
+      <h4>Informationen zu deinem Fall</h4>
+      <div class="card mb-4">
+        <div class="card-body">
+          <p><strong>Fallkennung:</strong> {{ fall.kennung }}</p>
+          <p><strong>Jahrgangsstufe:</strong> {{ fall.jahrgangsstufe }}</p>
+          <p><strong>Geschlecht:</strong> {{ fall.get_geschlecht_display }}</p>
+          <p><strong>Ort:</strong> {{ fall.ort }}</p>
+          <p data-konfliktpartei="{{ fall.konfliktpartei }}">
+            <strong>Konfliktpartei:</strong> {{ fall.get_konfliktpartei_display }}
+          </p>
+          <p>
+            <strong>Beschreibung:</strong><br>
+            {{ fall.beschreibung }}
+            <br>
+            <small class="text-muted">
+              Aus datenschutzrechtlichen Gründen wurden ggf. personenbezogene Daten wie Namen
+              vor der Speicherung automatisch anonymisiert.
+            </small>
+          </p>
+          <p><strong>Zeitpunkt der Meldung:</strong> {{ fall.zeitpunkt_erstellung|date:"d.m.Y H:i" }}</p>
+        </div>
+      </div>
+
+      <!-- Verbesserung: Termin-Auswahl mit Cards -->
+      <h4 class="mt-4">Freie Termine für ein Beratungstelefonat</h4>
+      {% if error_message %}
+        <div class="alert alert-danger">
+          {{ error_message }}
+        </div>
+      {% endif %}
+      <!-- Ausschnitt aus dem "Nicht Spam, Noch Kein Termin Gebucht"-Block -->
+      {% if free_timeslots %}
+      <form method="post" action="{% url 'book_consultation' fall_id %}">
+        {% csrf_token %}
+
+        <!-- Container für unsere TimeSlot-Karten -->
+        <div class="row row-cols-1 row-cols-md-2 g-3 mb-5">
+          {% for slot in free_timeslots %}
+            <div class="col">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    {{ slot.start_time|date:"l, d.m.Y H:i" }}
+                    – {{ slot.end_time|date:"H:i" }}
+                  </h5>
+                  <p class="card-text mb-2">
+                    Geschlecht der Beratungslehrkraft:
+                    {{ slot.teacher.get_gender_display|default:"-" }}
+                  </p>
+                  <div class="form-check">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="timeslot_id"
+                      id="slot{{ slot.id }}"
+                      value="{{ slot.id }}"
+                      required
+                    >
+                    <label class="form-check-label" for="slot{{ slot.id }}">
+                      Diesen Termin auswählen
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <!-- Sticky-Bereich für den Submit-Button -->
+        <div
+          style="
+            position: -webkit-sticky; /* Safari */
+            position: sticky;
+            bottom: 0;
+            background: #f8f9fa;
+            padding: 15px;
+            z-index: 999;
+            border-top: 1px solid #ccc;"
+        >
+          <button type="submit" class="btn btn-primary w-100">
+            Telefontermin buchen
+          </button>
+        </div>
+      </form>
+      {% else %}
+        <p class="text-muted">Aktuell sind keine freien Termine verfügbar.</p>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
+<footer>
+  <a href="https://www.ziehenschule.de/impressum.html" target="_blank">Impressum</a>
+</footer>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

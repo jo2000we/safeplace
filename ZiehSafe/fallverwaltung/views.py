@@ -4,6 +4,8 @@ import os
 from django.contrib.auth import authenticate, login
 from django.db.models import Q
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+
 from .forms import StatistikForm
 from django.db.models import Count
 from django.shortcuts import render, get_object_or_404, redirect
@@ -321,19 +323,27 @@ def reassign_appointment(request, timeslot_id):
     if request.method == 'POST':
         form = TimeSlotReassignmentForm(request.POST)
         if form.is_valid():
-            new_teacher = form.cleaned_data['new_teacher']
-            timeslot.teacher = new_teacher
-            timeslot.save()
+            # neuen Lehrer setzen
+            timeslot.teacher = form.cleaned_data['new_teacher']
+            # Telefonnummer aus dem Formular mitnehmen, falls übergeben
+            phone = form.cleaned_data.get('phone_number')
+            if phone is not None:
+                timeslot.phone_number = phone
+            # beides speichern
+            timeslot.save(update_fields=['teacher', 'phone_number'])
             return redirect('appointment_dashboard')
     else:
-        form = TimeSlotReassignmentForm()
+        form = TimeSlotReassignmentForm(initial={
+            'new_teacher': timeslot.teacher.id,
+            'phone_number': timeslot.phone_number,
+        })
 
+    # Falls noch ein GET‑Fallback nötig ist:
     teacher = request.user
-    my_timeslots = TimeSlot.objects.filter(teacher=teacher).order_by('start_time')
-    free_timeslots = TimeSlot.objects.filter(fall__isnull=True, start_time__gte=timezone.now()).order_by('start_time')
     context = {
-        'my_timeslots': my_timeslots,
-        'free_timeslots': free_timeslots,
+        'my_timeslots': TimeSlot.objects.filter(teacher=teacher).order_by('start_time'),
+        'free_timeslots': TimeSlot.objects.filter(fall__isnull=True, start_time__gte=timezone.now()),
+        'teacher_list': User.objects.exclude(id=teacher.id),
         'reassign_form': form,
         'reassign_timeslot': timeslot,
     }
@@ -377,7 +387,7 @@ def create_appointment(request):
                 teacher=teacher,
                 start_time=start_time,
                 end_time=end_time,
-                phone_number = phone_number
+                phone_number=phone_number
             )
         else:
             # Wiederholung: parse das Wiederholungsende-Datum (Format: "YYYY-MM-DD")
@@ -396,7 +406,7 @@ def create_appointment(request):
                     teacher=teacher,
                     start_time=current_start,
                     end_time=current_end,
-                    phone_number = phone_number
+                    phone_number=phone_number
                 )
                 current_start += timedelta(days=7)
 
@@ -415,3 +425,12 @@ def delete_appointment(request, timeslot_id):
         return redirect('appointment_dashboard')
     # Falls GET: Kann alternativ auch einen Fallback haben oder per AJAX genutzt werden
     return redirect('appointment_dashboard')
+
+
+@login_required
+@require_POST
+def update_phone(request, pk):
+    slot = get_object_or_404(TimeSlot, pk=pk)
+    slot.phone_number = request.POST.get("phone_number") or slot.phone_number
+    slot.save(update_fields=["phone_number"])
+    return redirect("appointment_dashboard")

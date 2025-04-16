@@ -19,4 +19,5 @@ urlpatterns = [
     path('appointment/edit/<int:timeslot_id>/', views.edit_appointment, name='edit_appointment'),
     path('appointment/reassign/<int:timeslot_id>/', views.reassign_appointment, name='reassign_appointment'),
     path('appointment/delete_appointment/<int:timeslot_id>/', views.delete_appointment, name='delete_appointment'),
+    path("timeslot/<int:pk>/phone/", views.update_phone, name="update_phone"),
 ]

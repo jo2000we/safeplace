@@ -74,9 +74,15 @@ class TimeSlotForm(forms.ModelForm):
 
 Teacher = get_user_model()  # Das benutzerdefinierte Teacher-Modell
 
+
 class TimeSlotReassignmentForm(forms.Form):
     new_teacher = forms.ModelChoiceField(
         queryset=Teacher.objects.all(),
         label="Neuer Lehrer",
         empty_label="Bitte auswählen"
     )
+    phone_number = forms.CharField(required=False, label="Telefonnummer")
+
+    class Meta:
+        model = TimeSlot
+        fields = ['new_teacher', 'phone_number']
