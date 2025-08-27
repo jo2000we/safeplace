@@ -53,17 +53,18 @@ class Fall(models.Model):
     KONFLIKTPARTEI_CHOICES = [
         ('Schüler', 'Schüler (eine Person, Männlich)'),
         ('Schülerin', 'Schülerin (eine Person, Weiblich)'),
-        ('Schüler*innen', 'Schüler*innen (Mehrzahl)'),
+        ('Divers', 'eine Person (Divers)'),
+        ('Schülerinnen und Schüler', 'Schülerinnen und Schüler (Mehrzahl)'),
         ('Lehrer', 'ein Lehrer (Männlich)'),
         ('Lehrerin', 'eine Lehrerin (weiblich)'),
-        ('Lehrer*innen', 'Lehrer*innen (Mehrzahl)'),
+        ('Lehrerinnen und Lehrer', 'Lehrerinnen und Lehrer (Mehrzahl)'),
         ('Eltern', 'Eltern'),
         ('Schulpersonal', 'Schulpersonal'),
         ('Andere', 'Andere'),
     ]
 
     konfliktpartei = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=KONFLIKTPARTEI_CHOICES,
         verbose_name="Konfliktpartei"
     )
